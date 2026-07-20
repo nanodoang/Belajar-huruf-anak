@@ -543,34 +543,41 @@
   }
 
   // --- Service worker sederhana agar bisa dibuka lagi tanpa internet ---
+  // Strategi: network-first, supaya versi terbaru selalu dipakai kalau ada internet,
+  // dan cache lama otomatis dibersihkan setiap update.
   if('serviceWorker' in navigator){
     const swCode = `
-      const CACHE_NAME = 'kiki-huruf-v1';
+      const CACHE_NAME = 'kiki-huruf-v2';
       self.addEventListener('install', function(event){
-        event.waitUntil(
-          caches.open(CACHE_NAME).then(function(cache){
-            return cache.add(self.registration.scope);
-          })
-        );
         self.skipWaiting();
       });
-      self.addEventListener('activate', function(event){ self.clients.claim(); });
+      self.addEventListener('activate', function(event){
+        event.waitUntil(
+          caches.keys().then(function(names){
+            return Promise.all(
+              names.filter(function(n){ return n !== CACHE_NAME; })
+                   .map(function(n){ return caches.delete(n); })
+            );
+          }).then(function(){ return self.clients.claim(); })
+        );
+      });
       self.addEventListener('fetch', function(event){
         event.respondWith(
-          caches.match(event.request).then(function(cached){
-            return cached || fetch(event.request).then(function(response){
-              return caches.open(CACHE_NAME).then(function(cache){
-                cache.put(event.request, response.clone());
-                return response;
-              });
-            }).catch(function(){ return cached; });
+          fetch(event.request).then(function(response){
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(function(cache){ cache.put(event.request, copy); });
+            return response;
+          }).catch(function(){
+            return caches.match(event.request);
           })
         );
       });
     `;
     const swBlob = new Blob([swCode], {type:'application/javascript'});
     const swUrl = URL.createObjectURL(swBlob);
-    navigator.serviceWorker.register(swUrl, {scope: './'}).catch(function(){});
+    navigator.serviceWorker.register(swUrl, {scope: './'}).then(function(reg){
+      reg.update();
+    }).catch(function(){});
   }
 })();
 </script>
