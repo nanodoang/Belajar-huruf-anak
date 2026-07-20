@@ -189,6 +189,13 @@
   }
   @keyframes fall{to{transform:translateY(110vh) rotate(360deg);opacity:.9;}}
 
+  .manual-ok-btn{
+    font-family:'Baloo 2',sans-serif;font-weight:700;font-size:13px;
+    background:#fff;color:var(--leaf-deep);border:2px solid var(--leaf);
+    border-radius:12px;padding:8px 14px;cursor:pointer;margin-top:4px;
+  }
+  .manual-ok-btn:active{transform:translateY(2px);}
+
   .install-btn{
     font-family:'Baloo 2',sans-serif;font-weight:700;font-size:14px;
     background:var(--leaf);color:#fff;border:none;border-radius:14px;
@@ -232,6 +239,7 @@
     </div>
     <div class="mic-label" id="micLabel">Tekan mikrofon, lalu ucapkan bunyi hurufnya</div>
     <div class="feedback" id="feedback"></div>
+    <button class="manual-ok-btn" id="manualOkBtn" style="display:none;">✅ Sudah Benar, Lanjut</button>
 
     <div class="controls">
       <button class="nav-btn" id="prevBtn">⬅ Sebelumnya</button>
@@ -321,6 +329,8 @@
     feedback.textContent = '';
     feedback.className = 'feedback';
     bubble.textContent = 'Coba ucapkan bunyi huruf "' + letter + '" ya!';
+    failCount = 0;
+    manualOkBtn.style.display = 'none';
     buildTrail();
     updateProgress();
   }
@@ -425,15 +435,45 @@
     micLabel.textContent = '';
   }
 
+  const manualOkBtn = document.getElementById('manualOkBtn');
+  let failCount = 0;
+
+  function levenshtein(a, b){
+    const m = a.length, n = b.length;
+    if(m === 0) return n;
+    if(n === 0) return m;
+    const dp = Array.from({length:m+1}, ()=>new Array(n+1).fill(0));
+    for(let i=0;i<=m;i++) dp[i][0] = i;
+    for(let j=0;j<=n;j++) dp[0][j] = j;
+    for(let i=1;i<=m;i++){
+      for(let j=1;j<=n;j++){
+        const cost = a[i-1] === b[j-1] ? 0 : 1;
+        dp[i][j] = Math.min(dp[i-1][j]+1, dp[i][j-1]+1, dp[i-1][j-1]+cost);
+      }
+    }
+    return dp[m][n];
+  }
+
+  function fuzzyMatch(h, a){
+    if(!h || !a) return false;
+    if(h === a || h.includes(a) || a.includes(h)) return true;
+    if(h[0] !== a[0]) return false; // bunyi awal harus mirip, tapi ini longgar untuk sisanya
+    const maxLen = Math.max(h.length, a.length);
+    const dist = levenshtein(h, a);
+    const threshold = maxLen <= 3 ? 1 : maxLen <= 6 ? 2 : 3;
+    return dist <= threshold;
+  }
+
   function checkAnswer(heardList){
     const [letter, , , accepted] = DATA[idx];
     const isCorrect = heardList.some(h => {
       if(!h) return false;
       if(accepted.includes(h) || h === letter.toLowerCase()) return true;
-      // toleransi: STT kadang menambah/mengurangi huruf di ujung kata
-      return accepted.some(a => a.length >= 2 && (h.startsWith(a) || h.includes(a)));
+      return accepted.some(a => fuzzyMatch(h, a));
     });
     if(isCorrect){
+      failCount = 0;
+      manualOkBtn.style.display = 'none';
       solved[idx] = true;
       letterCard.classList.add('correct');
       feedback.textContent = 'Betul sekali! 🎉';
@@ -444,13 +484,32 @@
       updateProgress();
       setTimeout(goNext, 1400);
     } else {
+      failCount++;
       letterCard.classList.add('wrong');
       setTimeout(()=>letterCard.classList.remove('wrong'), 400);
       feedback.textContent = 'Kiki dengar "' + (heardList[0]||'...') + '". Coba lagi ya!';
       feedback.className = 'feedback no';
       bubble.textContent = 'Ayo coba sekali lagi, ucapkan bunyi huruf ' + letter;
+      if(failCount >= 2){
+        manualOkBtn.style.display = 'inline-block';
+      }
     }
   }
+
+  manualOkBtn.addEventListener('click', function(){
+    const [letter] = DATA[idx];
+    failCount = 0;
+    manualOkBtn.style.display = 'none';
+    solved[idx] = true;
+    letterCard.classList.add('correct');
+    feedback.textContent = 'Oke, lanjut ya! 🎉';
+    feedback.className = 'feedback ok';
+    bubble.textContent = 'Sip, huruf ' + letter + ' dilanjut!';
+    launchConfetti();
+    buildTrail();
+    updateProgress();
+    setTimeout(goNext, 1000);
+  });
 
   render();
 
