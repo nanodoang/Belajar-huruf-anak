@@ -402,8 +402,12 @@
         micLabel.textContent = 'Izin mikrofon ditolak. Aktifkan izin mikrofon di browser.';
       } else if(e.error === 'no-speech'){
         micLabel.textContent = 'Tidak terdengar suara, coba lagi ya';
+        registerFail('Kiki tidak dengar suaranya. Coba lebih keras ya!');
+      } else if(e.error === 'aborted'){
+        // pengguna sendiri yang menghentikan rekaman, jangan dihitung gagal
       } else {
         micLabel.textContent = 'Tekan mikrofon, lalu ucapkan bunyi hurufnya';
+        registerFail('Kiki belum dengar dengan jelas. Coba lagi ya!');
       }
     };
 
@@ -464,6 +468,19 @@
     return dist <= threshold;
   }
 
+  function registerFail(customMessage){
+    const [letter] = DATA[idx];
+    failCount++;
+    letterCard.classList.add('wrong');
+    setTimeout(()=>letterCard.classList.remove('wrong'), 400);
+    feedback.textContent = customMessage || 'Coba lagi ya!';
+    feedback.className = 'feedback no';
+    bubble.textContent = 'Ayo coba sekali lagi, ucapkan bunyi huruf ' + letter;
+    if(failCount >= 2){
+      manualOkBtn.style.display = 'inline-block';
+    }
+  }
+
   function checkAnswer(heardList){
     const [letter, , , accepted] = DATA[idx];
     const isCorrect = heardList.some(h => {
@@ -484,15 +501,7 @@
       updateProgress();
       setTimeout(goNext, 1400);
     } else {
-      failCount++;
-      letterCard.classList.add('wrong');
-      setTimeout(()=>letterCard.classList.remove('wrong'), 400);
-      feedback.textContent = 'Kiki dengar "' + (heardList[0]||'...') + '". Coba lagi ya!';
-      feedback.className = 'feedback no';
-      bubble.textContent = 'Ayo coba sekali lagi, ucapkan bunyi huruf ' + letter;
-      if(failCount >= 2){
-        manualOkBtn.style.display = 'inline-block';
-      }
+      registerFail('Kiki dengar "' + (heardList[0]||'...') + '". Coba lagi ya!');
     }
   }
 
