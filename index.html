@@ -378,40 +378,70 @@
     recognition.interimResults = false;
     recognition.maxAlternatives = 5;
 
+    let sessionHandled = false;
+    let autoRetries = 0;
+    const MAX_AUTO_RETRIES = 2;
+
     recognition.onstart = function(){
       recognizing = true;
+      sessionHandled = false;
       micBtn.classList.add('listening');
-      micLabel.textContent = 'Kiki sedang mendengarkan...';
+      micLabel.textContent = autoRetries > 0 ? 'Kiki dengar lagi ya, coba ucapkan sekali lagi...' : 'Kiki sedang mendengarkan...';
       mascot.classList.add('talk');
     };
+
+    function retryOrFail(message){
+      if(autoRetries < MAX_AUTO_RETRIES){
+        autoRetries++;
+        setTimeout(function(){
+          try{ recognition.start(); } catch(e){}
+        }, 300);
+      } else {
+        autoRetries = 0;
+        registerFail(message);
+      }
+    }
 
     recognition.onend = function(){
       recognizing = false;
       micBtn.classList.remove('listening');
       mascot.classList.remove('talk');
-      if(micLabel.textContent === 'Kiki sedang mendengarkan...'){
+      if(micLabel.textContent === 'Kiki sedang mendengarkan...' || micLabel.textContent === 'Kiki dengar lagi ya, coba ucapkan sekali lagi...'){
         micLabel.textContent = 'Tekan mikrofon, lalu ucapkan bunyi hurufnya';
+      }
+      // Kadang ucapan sangat pendek (satu huruf) atau suara kecil membuat rekaman
+      // berhenti tanpa memicu onresult maupun onerror. Kiki coba dengar lagi
+      // beberapa kali secara otomatis sebelum dianggap gagal.
+      if(!sessionHandled){
+        retryOrFail('Kiki belum dengar dengan jelas. Coba ucapkan lebih dekat ke mikrofon, ya!');
       }
     };
 
     recognition.onerror = function(e){
       recognizing = false;
+      sessionHandled = true;
       micBtn.classList.remove('listening');
       mascot.classList.remove('talk');
       if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){
+        autoRetries = 0;
         micLabel.textContent = 'Izin mikrofon ditolak. Aktifkan izin mikrofon di browser.';
       } else if(e.error === 'no-speech'){
+        sessionHandled = false;
         micLabel.textContent = 'Tidak terdengar suara, coba lagi ya';
-        registerFail('Kiki tidak dengar suaranya. Coba lebih keras ya!');
+        retryOrFail('Kiki tidak dengar suaranya. Coba lebih dekat & sedikit lebih keras ya!');
       } else if(e.error === 'aborted'){
+        autoRetries = 0;
         // pengguna sendiri yang menghentikan rekaman, jangan dihitung gagal
       } else {
+        autoRetries = 0;
         micLabel.textContent = 'Tekan mikrofon, lalu ucapkan bunyi hurufnya';
         registerFail('Kiki belum dengar dengan jelas. Coba lagi ya!');
       }
     };
 
     recognition.onresult = function(event){
+      sessionHandled = true;
+      autoRetries = 0;
       const results = event.results[0];
       const heard = [];
       for(let i=0;i<results.length;i++){
@@ -425,6 +455,7 @@
         recognition.stop();
         return;
       }
+      autoRetries = 0;
       feedback.textContent = '';
       feedback.className = 'feedback';
       try{ recognition.start(); } catch(e){}
