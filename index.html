@@ -251,32 +251,32 @@
 <script>
 (function(){
   const DATA = [
-    ["A","Apel","🍎",["a"]],
-    ["B","Bola","⚽",["be","beh","b"]],
-    ["C","Cicak","🦎",["ce","seh","c"]],
-    ["D","Dadu","🎲",["de","deh","d"]],
-    ["E","Ember","🪣",["e"]],
-    ["F","Foto","📷",["ef","eff","f"]],
-    ["G","Gajah","🐘",["ge","geh","g"]],
-    ["H","Hujan","🌧️",["ha","haa","h"]],
-    ["I","Ikan","🐟",["i"]],
-    ["J","Jam","⏰",["je","jeh","j"]],
-    ["K","Kucing","🐱",["ka","kaa","k"]],
-    ["L","Lampu","💡",["el","ell","l"]],
-    ["M","Meja","🪑",["em","emm","m"]],
-    ["N","Naga","🐉",["en","enn","n"]],
-    ["O","Obat","💊",["o"]],
-    ["P","Pisang","🍌",["pe","peh","p"]],
-    ["Q","Qori","📖",["ki","qi","q"]],
-    ["R","Rumah","🏠",["er","err","r"]],
-    ["S","Sapi","🐄",["es","ess","s"]],
-    ["T","Topi","🎩",["te","teh","t"]],
-    ["U","Ular","🐍",["u"]],
-    ["V","Vas","🏺",["ve","vee","fe","v"]],
-    ["W","Wortel","🥕",["we","weh","w"]],
-    ["X","Xilofon","🎹",["eks","ex","x"]],
-    ["Y","Yoyo","🪀",["ye","yeh","y"]],
-    ["Z","Zebra","🦓",["zet","zed","set","z"]]
+    ["A","Apel","🍎",["a","apel"]],
+    ["B","Bola","⚽",["be","beh","b","bola"]],
+    ["C","Cicak","🦎",["ce","seh","c","cicak"]],
+    ["D","Dadu","🎲",["de","deh","d","dadu"]],
+    ["E","Ember","🪣",["e","ember"]],
+    ["F","Foto","📷",["ef","eff","f","foto"]],
+    ["G","Gajah","🐘",["ge","geh","g","gajah"]],
+    ["H","Hujan","🌧️",["ha","haa","h","hujan"]],
+    ["I","Ikan","🐟",["i","ikan"]],
+    ["J","Jam","⏰",["je","jeh","j","jam"]],
+    ["K","Kucing","🐱",["ka","kaa","k","kucing"]],
+    ["L","Lampu","💡",["el","ell","l","lampu"]],
+    ["M","Meja","🪑",["em","emm","m","meja"]],
+    ["N","Naga","🐉",["en","enn","n","naga"]],
+    ["O","Obat","💊",["o","obat"]],
+    ["P","Pisang","🍌",["pe","peh","p","pisang"]],
+    ["Q","Qori","📖",["ki","qi","q","qori"]],
+    ["R","Rumah","🏠",["er","err","r","rumah"]],
+    ["S","Sapi","🐄",["es","ess","s","sapi"]],
+    ["T","Topi","🎩",["te","teh","t","topi"]],
+    ["U","Ular","🐍",["u","ular"]],
+    ["V","Vas","🏺",["ve","vee","fe","v","vas"]],
+    ["W","Wortel","🥕",["we","weh","w","wortel"]],
+    ["X","Xilofon","🎹",["eks","ex","x","xilofon"]],
+    ["Y","Yoyo","🪀",["ye","yeh","y","yoyo"]],
+    ["Z","Zebra","🦓",["zet","zed","set","z","zebra"]]
   ];
 
   let idx = 0;
@@ -427,7 +427,12 @@
 
   function checkAnswer(heardList){
     const [letter, , , accepted] = DATA[idx];
-    const isCorrect = heardList.some(h => accepted.includes(h) || h === letter.toLowerCase());
+    const isCorrect = heardList.some(h => {
+      if(!h) return false;
+      if(accepted.includes(h) || h === letter.toLowerCase()) return true;
+      // toleransi: STT kadang menambah/mengurangi huruf di ujung kata
+      return accepted.some(a => a.length >= 2 && (h.startsWith(a) || h.includes(a)));
+    });
     if(isCorrect){
       solved[idx] = true;
       letterCard.classList.add('correct');
